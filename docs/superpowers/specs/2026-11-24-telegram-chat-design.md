@@ -1,7 +1,7 @@
 # Telegram Bot Chat — Design
 
 Date: 2026-11-24
-Status: Draft, pending approval
+Status: Approved 2026-11-24
 
 ## 1. Intent
 
@@ -196,7 +196,12 @@ Frontend (`vitest`): `chatReducer` — pending → confirmed, pending → failed
 
 ### 6.11 README
 
-Keep the original assignment text under an "Assignment" heading at the bottom, and put the solution docs on top *(my call)*: setup (local + Docker), how to try it (BotFather → token → open UI → send `/start` to the bot), architecture diagram (text), WebSocket protocol, assumptions, trade-offs (WebSocket vs SSE, polling vs webhook, in-memory state and the single-process constraint, lock held during Telegram call), and production notes (webhook, Redis pub/sub + DB for multi-instance, UI auth, rate limiting, media support, kick button).
+Keep the original assignment text under an "Assignment" heading at the bottom, and put the solution docs on top *(my call)*: setup (local + Docker), how to try it (BotFather → token → open UI → send `/start` to the bot), architecture diagram (text), WebSocket protocol, assumptions, trade-offs (WebSocket vs SSE, polling vs webhook, in-memory state and the single-process constraint, lock held during Telegram call), and production notes (UI auth, rate limiting, media support, kick button), including the multi-instance design:
+- Telegram webhook instead of polling (polling allows a single consumer per token).
+- Session claim/release as a compare-and-set in the DB (`UPDATE ... WHERE owner IS NULL` / DynamoDB `ConditionExpression`), not a Redis lock: no TTL expiry hazard, no orphaned lock on crash, state and lock can't diverge.
+- `seq` and history persisted in the DB in the same transaction as the message.
+- Outgoing ordering via a single consumer per chat (SQS FIFO with `MessageGroupId = chat_id`, or Redis Streams) instead of holding a lock across the Telegram call; incoming ordering via webhook `max_connections=1` or the same queue.
+- Redis pub/sub for fan-out to WebSocket connections across instances; resume on reconnect reads from the DB via `last_seq`, so lost pub/sub messages are harmless.
 
 ## 7. Left to the builder
 
