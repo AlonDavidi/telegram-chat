@@ -28,6 +28,23 @@ describe("chatReducer", () => {
     expect(run({ type: "socket", value: "open" }).socket).toBe("open");
   });
 
+  test("losing the socket fails in-flight sends; a later snapshot can still confirm them", () => {
+    let s = inSession(
+      { type: "send", client_id: "c1", text: "a", timestamp: "t" },
+      { type: "send", client_id: "c2", text: "b", timestamp: "t" },
+      { type: "socket", value: "reconnecting" },
+    );
+    expect(selectTimeline(s).map((m) => [m.state, m.error])).toEqual([
+      ["failed", "Connection lost before the server confirmed this message."],
+      ["failed", "Connection lost before the server confirmed this message."],
+    ]);
+    s = chatReducer(
+      s,
+      frame({ type: "snapshot", status: status("s1"), messages: [msg(1, { direction: "outgoing", text: "a", client_id: "c1" })] }),
+    );
+    expect(selectTimeline(s).map((m) => [m.text, m.state])).toEqual([["a", "confirmed"], ["b", "failed"]]);
+  });
+
   test("pending → confirmed by client_id", () => {
     const s = inSession(
       { type: "send", client_id: "c1", text: "hi", timestamp: "2026-01-01T12:00:00Z" },

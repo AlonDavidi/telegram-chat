@@ -1,58 +1,27 @@
-import { useState } from "react";
+import { useChatSocket } from "./chat/useChatSocket";
+import MessageInput from "./components/MessageInput";
+import MessageList from "./components/MessageList";
+import StatusBar from "./components/StatusBar";
 import "./index.css";
 
 function App() {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-
-  const sendMessage = () => {
-    if (!input.trim()) return;
-
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        text: input,
-        timestamp: new Date().toISOString(),
-        direction: "outgoing",
-      },
-    ]);
-
-    setInput("");
-  };
+  const { state, timeline, send } = useChatSocket();
+  const canSend = state.socket === "open" && state.status.connected;
+  const placeholder = canSend
+    ? "Type a message..."
+    : state.socket !== "open"
+      ? "Connecting to the server..."
+      : "Waiting for a Telegram user to send /start";
 
   return (
     <div className="chat-page">
       <div className="chat-container">
         <header className="chat-header">
           <h2>Telegram Chat</h2>
+          <StatusBar socket={state.socket} status={state.status} />
         </header>
-
-        <div className="chat-messages">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`chat-message outgoing`}
-            >
-              <div className="chat-bubble">
-                <div className="chat-text">{msg.text}</div>
-                <div className="chat-timestamp">
-                  {new Date(msg.timestamp).toLocaleTimeString()}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="chat-input">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type a message..."
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          />
-          <button onClick={sendMessage}>Send</button>
-        </div>
+        <MessageList items={timeline} />
+        <MessageInput disabled={!canSend} placeholder={placeholder} onSend={send} />
       </div>
     </div>
   );
