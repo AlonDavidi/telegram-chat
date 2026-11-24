@@ -124,3 +124,59 @@ body {
 .chat-input button:hover {
   background: #3a78d8;
 }
+
+/* Header status */
+.chat-header h2 {
+  margin: 0 0 6px;
+}
+
+.chat-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #555;
+}
+
+.chat-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f0ad4e;
+}
+
+.chat-status-dot.open {
+  background: #2e9d5b;
+}
+
+.chat-status-participant {
+  margin-left: auto;
+}
+
+.chat-empty {
+  text-align: center;
+  color: #888;
+  font-size: 13px;
+  margin-top: 24px;
+}
+
+/* Delivery states */
+.chat-message.pending .chat-bubble {
+  opacity: 0.6;
+}
+
+.chat-message.failed .chat-bubble {
+  border: 1px solid #d9534f;
+}
+
+.chat-error {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #c9302c;
+}
+
+.chat-input input:disabled,
+.chat-input button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
