@@ -1,6 +1,8 @@
 // Pure chat state. The server is the source of truth for ordering (seq);
 // the UI only adds optimistic "pending" bubbles until the server echoes them back.
 
+const CONNECTION_LOST = "Connection lost before the server confirmed this message.";
+
 export const initialState = {
   socket: "connecting", // "connecting" | "open" | "reconnecting"
   status: { connected: false, session_id: null, participant: null },
@@ -57,8 +59,18 @@ function applyFrame(state, frame) {
 
 export function chatReducer(state, action) {
   switch (action.type) {
-    case "socket":
-      return { ...state, socket: action.value };
+    case "socket": {
+      if (action.value !== "reconnecting") return { ...state, socket: action.value };
+      // The server may or may not have processed in-flight sends. Mark them
+      // failed; if one did go through, the resume snapshot confirms it.
+      return {
+        ...state,
+        socket: action.value,
+        pending: state.pending.map((p) =>
+          p.state === "pending" ? { ...p, state: "failed", error: CONNECTION_LOST } : p,
+        ),
+      };
+    }
     case "send":
       return {
         ...state,
