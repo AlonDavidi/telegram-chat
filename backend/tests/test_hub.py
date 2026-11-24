@@ -24,7 +24,7 @@ async def test_slow_client_is_dropped_others_unaffected():
     hub.add(fast)
     for i in range(5):
         hub.broadcast({"n": i})
-    await drain()
+        await drain()  # events arrive one at a time; fast's writer keeps up
     assert len(hub) == 1
     assert slow.closed_code == 1013
     assert [f["n"] for f in fast.sent] == [0, 1, 2, 3, 4]
