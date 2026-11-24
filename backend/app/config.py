@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,7 +13,9 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    telegram_bot_token: SecretStr
+    telegram_bot_token: SecretStr = Field(min_length=1)  # empty counts as missing
+    # Browser origins allowed for HTTP (CORS) and for /ws. Same-origin pages
+    # (the Vite dev server and nginx proxy) are always allowed on /ws.
     cors_origins: list[str] = ["http://localhost:5173"]
     ws_queue_size: int = 100
 

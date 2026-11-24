@@ -54,6 +54,7 @@ def create_app(
             await gateway.stop()
 
     app = FastAPI(title="Telegram Chat Backend", lifespan=lifespan)
+    app.state.settings = settings
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

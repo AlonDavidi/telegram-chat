@@ -5,7 +5,13 @@ from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
 
-MAX_TEXT_LENGTH = 4096  # Telegram's limit for a text message
+MAX_TEXT_LENGTH = 4096  # Telegram's limit for a text message, in UTF-16 code units
+
+
+def utf16_length(text: str) -> int:
+    """Length as Telegram (and JavaScript) count it: characters outside the BMP,
+    such as most emoji, count as 2."""
+    return len(text.encode("utf-16-le")) // 2
 
 Direction = Literal["incoming", "outgoing"]
 ErrorCode = Literal["NO_PARTICIPANT", "INVALID_MESSAGE", "TELEGRAM_ERROR", "BAD_REQUEST"]
@@ -53,7 +59,7 @@ class SendFrame(BaseModel):
         value = value.strip()
         if not value:
             raise ValueError("message text is empty")
-        if len(value) > MAX_TEXT_LENGTH:
+        if utf16_length(value) > MAX_TEXT_LENGTH:
             raise ValueError(f"message text exceeds {MAX_TEXT_LENGTH} characters")
         return value
 

@@ -15,11 +15,23 @@ from app.models import (
 )
 
 
-def test_send_frame_strips_and_accepts_4096_hebrew_emoji():
-    text = ("שלום🙂" * 820)[:4096]
-    assert len(text) == 4096
+def _utf16_len(text):
+    return len(text.encode("utf-16-le")) // 2
+
+
+def test_send_frame_strips_and_accepts_4096_utf16_units_hebrew_emoji():
+    text = "שלום🙂" * 682 + "ab"  # each repeat = 6 UTF-16 units (emoji counts 2)
+    assert _utf16_len(text) == 4094
+    text += "ש" * 2
+    assert _utf16_len(text) == 4096
     f = parse_client_frame({"type": "send", "client_id": "c1", "text": f"  {text}  "})
     assert f.text == text
+
+
+def test_send_frame_counts_emoji_as_two_units_like_telegram():
+    text = "🙂" * 2049  # 2049 code points, 4098 UTF-16 units
+    with pytest.raises(ValidationError):
+        parse_client_frame({"type": "send", "client_id": "c1", "text": text})
 
 
 @pytest.mark.parametrize("text", ["", "   ", "x" * 4097])

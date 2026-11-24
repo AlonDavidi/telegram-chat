@@ -100,3 +100,41 @@ def test_resume_delta(client):
         snap = _hello(ws, session_id=sid, last_seq=1)
         assert [m["text"] for m in snap["messages"]] == ["b"]
         assert snap["status"]["participant"] == {"first_name": "A", "username": "a"}
+
+
+def test_binary_frame_before_hello_is_bad_request(client):
+    with client.websocket_connect("/ws") as ws:
+        ws.send_bytes(b"\x00\x01")
+        assert ws.receive_json()["code"] == "BAD_REQUEST"
+        with pytest.raises(WebSocketDisconnect) as e:
+            ws.receive_json()
+        assert e.value.code == 1008
+
+
+def test_binary_frame_after_hello_keeps_connection(client):
+    with client.websocket_connect("/ws") as ws:
+        _hello(ws)
+        ws.send_bytes(b"\x00\x01")
+        assert ws.receive_json()["code"] == "BAD_REQUEST"
+        ws.send_json({"type": "send", "client_id": "c1", "text": "hi"})
+        assert ws.receive_json()["code"] == "NO_PARTICIPANT"
+
+
+def test_foreign_origin_is_rejected(client):
+    with pytest.raises(WebSocketDisconnect) as e:
+        with client.websocket_connect("/ws", headers={"origin": "https://evil.example"}) as ws:
+            ws.send_json({"type": "hello"})
+            ws.receive_json()
+    assert e.value.code == 1008
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "http://testserver",        # same origin as the Host header (Vite/nginx proxy case)
+        "http://localhost:5173",    # listed in cors_origins
+    ],
+)
+def test_allowed_origins_connect(client, origin):
+    with client.websocket_connect("/ws", headers={"origin": origin}) as ws:
+        assert _hello(ws)["type"] == "snapshot"
