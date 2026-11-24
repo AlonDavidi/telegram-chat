@@ -73,3 +73,16 @@ def service(gateway):
     from app.store import MessageStore
 
     return ChatService(MessageStore(), SessionState(), ConnectionHub(), gateway)
+
+
+@pytest.fixture
+def client():
+    from fastapi.testclient import TestClient
+
+    from app.config import Settings
+    from app.main import create_app
+
+    settings = Settings(telegram_bot_token="test-token", _env_file=None)
+    app = create_app(settings, gateway_factory=lambda s: FakeGateway())
+    with TestClient(app) as c:  # runs the lifespan; c.portal runs async calls
+        yield c
