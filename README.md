@@ -36,7 +36,7 @@ npm run dev                  # http://localhost:5173 (proxies /ws and /status to
 Tests:
 
 ```bash
-cd backend && pytest          # 69 tests, no network: Telegram is faked
+cd backend && pytest          # 76 tests, no network: Telegram is faked
 cd frontend && npm test       # reducer + status bar logic
 ```
 
@@ -58,7 +58,7 @@ Open the UI in two tabs: both show the same conversation in the same order.
 
 | Module | Responsibility |
 |---|---|
-| `config.py` | Settings from env / `.env`. Missing token → the process exits with a clear message. |
+| `config.py` | Settings from env / `.env`. Missing or empty token → the process exits with a clear message. |
 | `models.py` | Domain models and every WebSocket frame (pydantic). |
 | `session.py` | Single-participant rules (pure logic): claim, release, owner. |
 | `store.py` | In-memory history of the current session; assigns `seq`. |
@@ -103,7 +103,9 @@ Server → client:
 - The first frame must be `hello`, otherwise `BAD_REQUEST` and close (1008). Later malformed frames get `BAD_REQUEST` and the connection stays open.
 - **Resume:** if `hello.session_id` matches the server's session, the snapshot holds only `seq > last_seq`; otherwise (new session, or the backend restarted) it holds the whole history and the UI replaces its list.
 - **Outgoing confirmation** is the broadcast `message` frame carrying the sender's `client_id`; other tabs just see an outgoing message.
-- Text is trimmed and must be 1–4096 characters (Telegram's limit), else `INVALID_MESSAGE`.
+- Text is trimmed and must be 1–4096 characters, else `INVALID_MESSAGE`. Length is counted in UTF-16 code units, as Telegram and JavaScript count it, so an emoji counts as 2.
+- Binary frames get `BAD_REQUEST`.
+- **Origin check:** CORS does not cover WebSockets, so `/ws` rejects (close 1008) browser connections whose `Origin` is neither the page's own host (the Vite / nginx proxy case) nor listed in `CORS_ORIGINS`. Clients that send no `Origin` (scripts) are allowed.
 
 ## Session rules
 
